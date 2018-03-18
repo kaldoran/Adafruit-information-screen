@@ -24,7 +24,7 @@ time_t next_update = 0;
 void setup()   {     
   Serial.begin(115200);
   WiFi.begin(SSID, PASS);
-  
+
   while (WiFi.status() != WL_CONNECTED) {
     delay(500);
   }
@@ -115,11 +115,16 @@ void emptyScreen() {
 }
 
 void updateData() {
-  display.setTextSize(2);
-  display.setCursor(0,0);
-  display.println("Mise à jours des données"); 
+  display.setCursor(25,15);
+  display.println("Updating Data");
 
+  display.drawLine(17, 28, 110, 28, WHITE);
+  display.display();
+
+  // Doing some stuff
   delay(10000);
+  
+  display.clearDisplay();
 }
 
 
@@ -133,7 +138,7 @@ void loop() {
   
   for ( int curr_screen = 0; curr_screen < total_screen; curr_screen++) {
     /* Compare with last value of now, just to not slow proces with 2 now */    
-    if ( now <= next_update ) { 
+    if ( now >= next_update ) { 
       updateData();
       next_update = now + UPDATE_INTERVAL;
     }
