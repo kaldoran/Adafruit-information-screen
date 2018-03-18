@@ -1,27 +1,30 @@
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
+#include <ArduinoJson.h>
 
 #include <ESP8266WiFi.h>
 #include <time.h>
 
 #include "meteo.h"
+#include "Wifi.h"
 
-#include <ArduinoJson.h>
-
-#define OLED_RESET 0
-Adafruit_SSD1306 display(OLED_RESET);
+Adafruit_SSD1306 display(0);
 
 WiFiClient myclient;
 StaticJsonBuffer<200> jsonBuffer;
 
+#define UPDATE_INTERVAL 60 // Update every 5 min 
+
 char time_b[10];
+time_t now = 0;
+time_t next_update = 0;
 
 // https://query.yahooapis.com/v1/public/yql?q=select%20woeid%20from%20geo.places(1)%20where%20text=%22Firminy%22&format=json > WOEID
 // https://query.yahooapis.com/v1/public/yql?q=select%20item.forecast.high,%20item.forecast.low,%20item.condition.temp,%20item.forecast.text%20from%20weather.forecast%20where%20woeid%20=590999%20and%20u=%27c%27%20limit%201&format=json
 void setup()   {     
   Serial.begin(115200);
-  WiFi.begin("WiFi", "C71C7963C9C51D7431935E9961");
-  // WiFi.begin("HYJULA6", "asis42dihcisc");
+  WiFi.begin(SSID, PASS);
+  
   while (WiFi.status() != WL_CONNECTED) {
     delay(500);
   }
@@ -35,6 +38,9 @@ void setup()   {
   display.clearDisplay();
   display.setTextSize(1);
   display.setTextColor(WHITE);  
+
+  now = time(nullptr);
+  next_update = now + UPDATE_INTERVAL;
 }
 
 void my_strftime(char *_buffer, int size, const char* const _format, struct tm* _tm) {
@@ -81,7 +87,6 @@ void my_strftime(char *_buffer, int size, const char* const _format, struct tm* 
 }
 
 void dateTime() {
-  time_t now = time(nullptr);
   Serial.print(now);
   struct tm *local = localtime(&now);
   
@@ -109,23 +114,35 @@ void emptyScreen() {
   display.println("Aucune idee"); 
 }
 
+void updateData() {
+  display.setTextSize(2);
+  display.setCursor(0,0);
+  display.println("Mise à jours des données"); 
+
+  delay(10000);
+}
+
 
 typedef void (* Function) ();
 
 Function screen[] = {dateTime, emptyScreen};
-int totalScreen = sizeof(screen) / sizeof(screen[0]);
+int total_screen = sizeof(screen) / sizeof(screen[0]);
 
 
 void loop() {
-  Serial.println(totalScreen);
+  
+  for ( int curr_screen = 0; curr_screen < total_screen; curr_screen++) {
+    /* Compare with last value of now, just to not slow proces with 2 now */    
+    if ( now <= next_update ) { 
+      updateData();
+      next_update = now + UPDATE_INTERVAL;
+    }
 
-  int curr_screen = 0;
-  for ( curr_screen = 0; curr_screen < totalScreen; curr_screen++) {
+    now = time(nullptr);
     screen[curr_screen]();
-    waiting(curr_screen + 1, totalScreen);   
+    waiting(curr_screen + 1, total_screen);   
     delay(200);
   }
-
 }
  
 void waiting(uint8_t screen, uint8_t out_of) {
