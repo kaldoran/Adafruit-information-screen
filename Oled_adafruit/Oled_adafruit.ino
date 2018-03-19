@@ -1,12 +1,22 @@
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
 #include <ArduinoJson.h>
+#include <ESP8266HTTPClient.h>
 
 #include <ESP8266WiFi.h>
 #include <time.h>
 
 #include "meteo.h"
 #include "Wifi.h"
+
+/* Weather */
+int high = 0;
+int low = 0;
+int temp = 0;
+
+/* Exchange */
+float EUR_USD = 0;
+float USD_EUR = 0;
 
 /* Util */
 Adafruit_SSD1306 display(0);
@@ -89,6 +99,7 @@ void waiting(uint8_t screen, uint8_t out_of) {
 char time_b[10];
 
 void dateTime() {
+  int date_size = 0;
   Serial.print(now);
   struct tm *local = localtime(&now);
   
@@ -111,6 +122,37 @@ void dateTime() {
   display.display();
 }
 
+void weather() {
+  display.setCursor(0,0);
+  display.setTextSize(3);
+  display.print(temp);
+  
+  display.setTextSize(1);
+  display.setCursor(30, 0);
+  
+  display.print(high);
+  display.print((char)247);
+  display.println("C");
+
+  display.setCursor(30, 12);
+  display.print(low);
+  display.print((char)247);
+  display.println("C");
+  display.display();
+}
+
+void trade() {
+  display.setCursor(0,0);
+  display.println("");
+  display.print("  1 EUR = ");
+  display.print(EUR_USD);
+  display.println(" USD");
+
+  display.print("  1 USD = ");
+  display.print(USD_EUR);
+  display.println(" EUR");
+}
+
 /* Useless - Just show multi screen handle */
 void emptyScreen() {
   display.setCursor(0,0);
@@ -118,15 +160,50 @@ void emptyScreen() {
 }
 
 /* Updating weather adn some other data */
+
+void updateWeather(String _data) {
+  const size_t capacity = 4*JSON_OBJECT_SIZE(1) + JSON_OBJECT_SIZE(2) + JSON_OBJECT_SIZE(3) + JSON_OBJECT_SIZE(4);
+  DynamicJsonBuffer jsonBuffer(capacity);
+  JsonObject& root = jsonBuffer.parseObject(_data);
+  
+  if (!root.success()) {
+    Serial.println(F("Parsing failed!"));
+    return;
+  }
+
+  temp = root.get<int>("temp");
+  high = root.get<int>("high");
+  low  = root.get<int>("low");
+}
+
+void updateExchange(String _data) {
+  const size_t capacity = JSON_OBJECT_SIZE(2);
+  DynamicJsonBuffer jsonBuffer(capacity);
+  JsonObject& root = jsonBuffer.parseObject(_data);
+
+  if (!root.success()) {
+    Serial.println(F("Parsing failed!"));
+    return;
+  }
+
+  EUR_USD = root["EUR_USD"];
+  USD_EUR = root["USD_EUR"];
+}
+
 void updateData() {
+  HTTPClient http;
+    
   display.setCursor(25,15);
   display.println("Updating Data");
 
   display.drawLine(17, 28, 110, 28, WHITE);
   display.display();
 
-  // Doing some stuff
-  delay(10000);
+  http.begin("http://query.yahooapis.com/v1/public/yql?q=select%20item.forecast.high,%20item.forecast.low,%20item.condition.temp,%20item.forecast.text%20from%20weather.forecast%20where%20woeid%20=590999%20and%20u=%27c%27%20limit%201&format=json");  //Specify request destination
+  if (http.GET() == 200) updateWeather(http.getString());
+
+  http.begin("http://free.currencyconverterapi.com/api/v5/convert?q=USD_EUR,EUR_USD&compact=ultra");
+  if (http.GET() == 200) updateExchange(http.getString());
   
   display.clearDisplay();
 }
@@ -134,7 +211,7 @@ void updateData() {
 /* REAL PROGRAM - Need splitting function up their */
 #define UPDATE_INTERVAL 60 // Update every 5 min 
 
-Function screen[] = {dateTime, emptyScreen};
+Function screen[] = {dateTime, weather, trade, emptyScreen};
 int total_screen = sizeof(screen) / sizeof(screen[0]);
 
 void setup() {     
@@ -174,5 +251,3 @@ void loop() {
     waiting(curr_screen + 1, total_screen);   
   }
 }
- 
-
