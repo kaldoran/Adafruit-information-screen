@@ -171,9 +171,9 @@ void updateWeather(String _data) {
     return;
   }
 
-  temp = root.get<int>("temp");
-  high = root.get<int>("high");
-  low  = root.get<int>("low");
+  temp = root["query"]["results"]["channel"]["item"]["condition"]["temp"];
+  high = root["query"]["results"]["channel"]["item"]["forecast"]["high"];
+  low  = root["query"]["results"]["channel"]["item"]["forecast"]["low"];
 }
 
 void updateExchange(String _data) {
@@ -209,7 +209,7 @@ void updateData() {
 }
 
 /* REAL PROGRAM - Need splitting function up their */
-#define UPDATE_INTERVAL 60 // Update every 5 min 
+#define UPDATE_INTERVAL 5 * 60 // Update every 5 min 
 
 Function screen[] = {dateTime, weather, trade, emptyScreen};
 int total_screen = sizeof(screen) / sizeof(screen[0]);
@@ -238,14 +238,13 @@ void setup() {
 }
 
 void loop() {
-  
+  if ( now >= next_update ) { 
+    updateData();
+    next_update = now + UPDATE_INTERVAL;
+  }
+    
   for ( int curr_screen = 0; curr_screen < total_screen; curr_screen++) {
     /* Compare with last value of now, just to not slow proces with 2 now */    
-    if ( now >= next_update ) { 
-      updateData();
-      next_update = now + UPDATE_INTERVAL;
-    }
-    
     now = time(nullptr);
     screen[curr_screen]();
     waiting(curr_screen + 1, total_screen);   
