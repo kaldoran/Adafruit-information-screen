@@ -1,0 +1,5 @@
+Try use this service : 
+https://www.yahoo.com/news/_td/api/resource/WeatherService;woeids=[623868] 
+Which is more precise ( Search for filter ... too much value )
+
+Create mapping between weather condition & weather icon
