@@ -9,6 +9,9 @@
 #include "meteo.h"
 #include "Wifi.h"
 
+/* For the update */
+HTTPClient http;
+
 /* Weather */
 int high = 0;
 int low = 0;
@@ -17,6 +20,9 @@ int temp = 0;
 /* Exchange */
 float EUR_USD = 0;
 float USD_EUR = 0;
+
+/* Knowledge */
+String knowledge = " ";
 
 /* Util */
 Adafruit_SSD1306 display(0);
@@ -100,7 +106,6 @@ char time_b[10];
 
 void dateTime() {
   int date_size = 0;
-  Serial.print(now);
   struct tm *local = localtime(&now);
   
   display.setCursor(57,4);
@@ -123,18 +128,21 @@ void dateTime() {
 }
 
 void weather() {
+  int pos = 30;
+  if ( temp >= 10 ) pos = 40;
+  
   display.setCursor(0,0);
   display.setTextSize(3);
   display.print(temp);
   
   display.setTextSize(1);
-  display.setCursor(30, 0);
+  display.setCursor(pos, 0);
   
   display.print(high);
   display.print((char)247);
   display.println("C");
 
-  display.setCursor(30, 12);
+  display.setCursor(pos, 12);
   display.print(low);
   display.print((char)247);
   display.println("C");
@@ -154,9 +162,9 @@ void trade() {
 }
 
 /* Useless - Just show multi screen handle */
-void emptyScreen() {
+void uselessKnowledge() {
   display.setCursor(0,0);
-  display.println("Aucune idee"); 
+  display.println(knowledge);
 }
 
 /* Updating weather adn some other data */
@@ -190,9 +198,11 @@ void updateExchange(String _data) {
   USD_EUR = root["USD_EUR"];
 }
 
-void updateData() {
-  HTTPClient http;
-    
+void updateKnowledge(String _data) {
+  knowledge = _data;
+}
+
+void updateData() {   
   display.setCursor(25,15);
   display.println("Updating Data");
 
@@ -211,7 +221,7 @@ void updateData() {
 /* REAL PROGRAM - Need splitting function up their */
 #define UPDATE_INTERVAL 5 * 60 // Update every 5 min 
 
-Function screen[] = {dateTime, weather, trade, emptyScreen};
+Function screen[] = {dateTime, weather, trade, uselessKnowledge};
 int total_screen = sizeof(screen) / sizeof(screen[0]);
 
 void setup() {     
@@ -222,7 +232,7 @@ void setup() {
     delay(500);
   }
 
-  configTime(3600, 0, "pool.ntp.org", "time.nist.gov"); // Offset normal - Offset été
+  configTime(3600, 3600, "pool.ntp.org", "time.nist.gov"); // Offset normal - Offset été
 
   display.begin(SSD1306_SWITCHCAPVCC, 0x3C);  // initialize with the I2C addr 0x3C (for the 128x32
   display.display();
@@ -242,6 +252,10 @@ void loop() {
     updateData();
     next_update = now + UPDATE_INTERVAL;
   }
+
+  // For this one - Update each screen 
+  http.begin("http://kaldoran.fr/rdm.php");
+  if (http.GET() == 200 ) updateKnowledge(http.getString());
     
   for ( int curr_screen = 0; curr_screen < total_screen; curr_screen++) {
     /* Compare with last value of now, just to not slow proces with 2 now */    
