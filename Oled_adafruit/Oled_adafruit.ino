@@ -128,24 +128,30 @@ void dateTime() {
 }
 
 void weather() {
-  int pos = 30;
-  if ( temp >= 10 ) pos = 40;
+  int pos = 60;
+  if ( temp >= 10 ) pos = 70;
   
-  display.setCursor(0,0);
+  display.setCursor(35,3);
   display.setTextSize(3);
   display.print(temp);
   
   display.setTextSize(1);
-  display.setCursor(pos, 0);
+  display.setCursor(pos, 3);
   
   display.print(high);
   display.print((char)247);
   display.println("C");
 
-  display.setCursor(pos, 12);
+  display.setCursor(pos, 15);
   display.print(low);
   display.print((char)247);
   display.println("C");
+
+  display.setCursor(10, 20);  
+  display.setFont(&Weathericon);
+  display.write(66);
+  display.setFont();
+
   display.display();
 }
 
@@ -199,6 +205,7 @@ void updateExchange(String _data) {
 }
 
 void updateKnowledge(String _data) {
+  Serial.print(_data);
   knowledge = _data;
 }
 
@@ -221,7 +228,7 @@ void updateData() {
 /* REAL PROGRAM - Need splitting function up their */
 #define UPDATE_INTERVAL 5 * 60 // Update every 5 min 
 
-Function screen[] = {dateTime, weather, trade, uselessKnowledge};
+Function screen[] = {dateTime, weather, uselessKnowledge, trade};
 int total_screen = sizeof(screen) / sizeof(screen[0]);
 
 void setup() {     
@@ -232,7 +239,7 @@ void setup() {
     delay(500);
   }
 
-  configTime(3600, 3600, "pool.ntp.org", "time.nist.gov"); // Offset normal - Offset été
+  configTime(3600, 7200, "pool.ntp.org", "time.nist.gov"); // Offset normal - Offset été
 
   display.begin(SSD1306_SWITCHCAPVCC, 0x3C);  // initialize with the I2C addr 0x3C (for the 128x32
   display.display();
